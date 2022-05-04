@@ -3,7 +3,7 @@
 
 <img style="max-width:100%;" src="https://user-images.githubusercontent.com/33088785/166829474-a28ca2b7-dd3e-46d4-89d3-8a10bf1d3fad.png">
 
-Compatible with any ESP32 microcontroller, with or without a screen, supporting native LN invoices and static LNURLPay links.
+## Compatible with any ESP32 microcontroller, with or without a screen, supporting native LN invoices and static LNURLPay links.
 
 ### Includes portal for easy setup and retail
 ![portal](https://user-images.githubusercontent.com/33088785/166824760-bc612411-7663-4a78-9331-61390042e3ae.gif)
