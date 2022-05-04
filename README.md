@@ -24,3 +24,4 @@ Compatible with any ESP32 microcontroller, with or without a screen, supporting 
 > Default password is "ToTheMoon"
 
 
+![trigger](https://user-images.githubusercontent.com/33088785/166829947-d0194b32-19fc-4a16-83d3-dc6f9af9337c.gif)
