@@ -20,8 +20,9 @@ fs::SPIFFSFS &FlashFS = SPIFFS;
 ///////////CHANGE////////////////
 /////////////////////////////////
 
-bool usingM5 = true; // false if using a simple ESP32 board and not M5Stack          
-bool format = false; // true for formatting SPIFFS, use once, then set false and reflash
+bool usingM5 = true; // false if not using M5Stack          
+bool format = false; // true for formatting SPIFFS, use once, then make false and reflash
+int portalPin = 4;
 
 /////////////////////////////////
 /////////////////////////////////
@@ -196,8 +197,8 @@ void setup()
       }
     }
     else{
-      Serial.println(touchRead(4));
-      if(touchRead(4) < 30){
+      Serial.println(touchRead(portalPin));
+      if(touchRead(portalPin) < 60){
         Serial.println("Launch portal");
         triggerAp = true;
         timer = 5000;
@@ -358,7 +359,7 @@ void loop() {
     oldBalance = balance;
     while((oldBalance + amount.toInt()) > balance){
       checkBalance();
-      delay(3000);
+      delay(2000);
     }
     oldBalance = balance;
     Serial.println("Paid");
@@ -395,7 +396,7 @@ void loop() {
         delay(timePin.toInt());
         digitalWrite(highPin.toInt(), LOW); 
       }
-      delay(3000);
+      delay(2000);
     }
     payReq = "";
     dataId = "";
