@@ -1,8 +1,8 @@
 
+<center>
 ![image](https://user-images.githubusercontent.com/33088785/166831893-a112965e-eb05-4e46-add6-6191c6b3f4fc.png)
-
-
 ![boards](https://user-images.githubusercontent.com/33088785/166829474-a28ca2b7-dd3e-46d4-89d3-8a10bf1d3fad.png)
+</center>
 
 # bitcoinSwitch💡
 Turn things on with bitcoin.
