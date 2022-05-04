@@ -4,8 +4,6 @@
 
 <img style="max-width:100%;" src="https://user-images.githubusercontent.com/33088785/166829474-a28ca2b7-dd3e-46d4-89d3-8a10bf1d3fad.png">
 
-
-# bitcoinSwitch💡
 Turn things on with bitcoin.
 
 Compatible with any ESP32 microcontroller, with or without a screen, supporting native LN invoices and static LNURLPay links.
