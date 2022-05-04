@@ -3,7 +3,7 @@
 # bitcoinSwitch💡
 Turn things on with bitcoin.
 
-Compatible with any ESP32 microcontroller, with or without a screen, supporting native lightning invoices and static LNURLPay links.
+Compatible with any ESP32 microcontroller, with or without a screen, supporting native LN invoices and static LNURLPay links.
 
 ### Includes portal for easy setup
 ![portal](https://user-images.githubusercontent.com/33088785/166824760-bc612411-7663-4a78-9331-61390042e3ae.gif)
