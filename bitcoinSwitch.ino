@@ -440,7 +440,7 @@ void logoScreen()
   tft.setCursor(0, 80);
   tft.setTextSize(4);
   tft.setTextColor(TFT_PURPLE);
-  tft.println("LNbitsTrigger");
+  tft.println("bitcoinSwitch");
 }
 
 void portalLaunched()
