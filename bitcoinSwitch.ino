@@ -31,6 +31,7 @@ int portalPin = 4;
 // Access point variables
 String password;
 String lnbitsServer;
+String lnbitsPort;
 String lnurlP;
 String invoiceKey;
 String highPin;
@@ -79,6 +80,12 @@ static const char PAGE_ELEMENTS[] PROGMEM = R"(
       "type": "ACInput",
       "label": "LNbits server",
       "value": "legend.lnbits.com"
+    },
+    {
+      "name": "port",
+      "type": "ACInput",
+      "label": "LNbits port",
+      "value": "443"
     },
     {
       "name": "lnurl",
@@ -232,26 +239,30 @@ void setup()
 
     const JsonObject maRoot2 = doc[2];
     const char *maRoot2Char = maRoot2["value"];
-    lnurlP = maRoot2Char;
-    lnurlP.toUpperCase();
+    lnbitsPort = maRoot2Char;
 
     const JsonObject maRoot3 = doc[3];
     const char *maRoot3Char = maRoot3["value"];
-    invoiceKey = maRoot3Char;
+    lnurlP = maRoot3Char;
+    lnurlP.toUpperCase();
 
     const JsonObject maRoot4 = doc[4];
     const char *maRoot4Char = maRoot4["value"];
-    highPin = maRoot4Char;
+    invoiceKey = maRoot4Char;
     
     const JsonObject maRoot5 = doc[5];
     const char *maRoot5Char = maRoot5["value"];
-    timePin = maRoot5Char;
+    highPin = maRoot5Char;
 
     const JsonObject maRoot6 = doc[6];
     const char *maRoot6Char = maRoot6["value"];
-    amount = maRoot6Char;
+    timePin = maRoot6Char;
+
+    const JsonObject maRoot7 = doc[7];
+    const char *maRoot7Char = maRoot7["value"];
+    amount = maRoot7Char;
   }
-  else{
+  else {
     triggerAp = true;
   }
   paramFile.close();
@@ -265,19 +276,10 @@ void setup()
       File param = FlashFS.open(PARAM_FILE, "r");
       if (param)
       {
-        aux.loadElement(param, {"password", "server", "lnurl", "invoicekey", "pin", "time", "amount"});
+        aux.loadElement(param, {"password", "server", "port", "lnurl", "invoicekey", "pin", "time", "amount"});
         param.close();
       }
 
-      if (portal.where() == "/config")
-      {
-        File param = FlashFS.open(PARAM_FILE, "r");
-        if (param)
-        {
-          aux.loadElement(param, {"password", "server", "lnurl", "invoicekey", "pin", "time", "amount"});
-          param.close();
-        }
-      }
       return String();
     });
     saveAux.load(FPSTR(PAGE_SAVE));
@@ -287,7 +289,7 @@ void setup()
       if (param)
       {
         // save as a loadable set for parameters.
-        elementsAux.saveElement(param, {"password", "server", "lnurl", "invoicekey", "pin", "time", "amount"});
+        elementsAux.saveElement(param, {"password", "server", "port", "lnurl", "invoicekey", "pin", "time", "amount"});
         param.close();
         // read the saved elements again to display.
         param = FlashFS.open(PARAM_FILE, "r");
@@ -300,7 +302,7 @@ void setup()
       }
       return String();
     });
-    config.auth = AC_AUTH_BASIC;
+    config.auth = AC_AUTH_NONE;
     config.authScope = AC_AUTHSCOPE_AUX;
     config.ticker = true;
     config.autoReconnect = true;
@@ -348,9 +350,9 @@ void loop() {
     Serial.println("Failed to connect");
     delay(500);
   }
-  Serial.println(highPin.toInt());
-  Serial.println(timePin.toInt());
-  Serial.println(lnurlP.substring(0, 5));
+  Serial.println("High pin " + highPin.toInt());
+  Serial.println("Time pin " + timePin.toInt());
+  Serial.println("LNURLp " + lnurlP.substring(0, 5));
   if(lnurlP.substring(0, 5) == "LNURL"){
     if(usingM5 == true){
       qrdisplayScreen();
@@ -414,6 +416,7 @@ void serverError()
   tft.setTextSize(3);
   tft.setTextColor(TFT_RED);
   tft.println("Server connect fail");
+  Serial.println("Server connect fail");
 }
 
 void connectionError()
@@ -423,6 +426,7 @@ void connectionError()
   tft.setTextSize(3);
   tft.setTextColor(TFT_RED);
   tft.println("Wifi connect fail");
+  Serial.println("Wifi connect fail");
 }
 
 void connection()
@@ -432,6 +436,7 @@ void connection()
   tft.setTextSize(3);
   tft.setTextColor(TFT_RED);
   tft.println("Wifi connected");
+  Serial.println("Wifi connected");
 }
 
 void logoScreen()
@@ -450,6 +455,7 @@ void portalLaunched()
   tft.setTextSize(4);
   tft.setTextColor(TFT_PURPLE);
   tft.println("PORTAL LAUNCH");
+  Serial.println("PORTAL LAUNCH");
 }
 
 void processingScreen()
@@ -459,6 +465,7 @@ void processingScreen()
   tft.setTextSize(4);
   tft.setTextColor(TFT_WHITE);
   tft.println("PROCESSING");
+  Serial.println("PROCESSING");
 }
 
 void lnbitsScreen()
@@ -477,6 +484,7 @@ void portalScreen()
   tft.setTextSize(3);
   tft.setTextColor(TFT_WHITE);
   tft.println("PORTAL LAUNCHED");
+  Serial.println("PORTAL LAUNCHED");
 }
 
 void paidScreen()
@@ -486,6 +494,7 @@ void paidScreen()
   tft.setTextSize(4);
   tft.setTextColor(TFT_WHITE);
   tft.println("PAID");
+  Serial.println("PAID");
 }
 
 void completeScreen()
@@ -495,6 +504,7 @@ void completeScreen()
   tft.setTextSize(4);
   tft.setTextColor(TFT_WHITE);
   tft.println("COMPLETE");
+  Serial.println("COMPLETE");
 }
 
 void errorScreen()
@@ -504,6 +514,7 @@ void errorScreen()
   tft.setTextSize(4);
   tft.setTextColor(TFT_WHITE);
   tft.println("ERROR");
+  Serial.println("ERROR");
 }
 
 void qrdisplayScreen()
@@ -544,8 +555,9 @@ void checkConnection(){
   WiFiClientSecure client;
   client.setInsecure();
   const char* lnbitsserver = lnbitsServer.c_str();
+  long int lnbitsport = lnbitsPort.toInt();
   const char* invoicekey = invoiceKey.c_str();
-  if (!client.connect(lnbitsserver, 443)){
+  if (!client.connect(lnbitsserver, lnbitsport)){
     down = true;
     serverError();
     return;   
@@ -556,8 +568,9 @@ void checkBalance(){
   WiFiClientSecure client;
   client.setInsecure();
   const char* lnbitsserver = lnbitsServer.c_str();
+  long int lnbitsport = lnbitsPort.toInt();
   const char* invoicekey = invoiceKey.c_str();
-  if (!client.connect(lnbitsserver, 443)){
+  if (!client.connect(lnbitsserver, lnbitsport)){
     down = true;
     return;   
   }
@@ -579,7 +592,7 @@ void checkBalance(){
     }
   }
   String line = client.readString();
-  Serial.println(line);
+  Serial.println("Read line " + line);
   StaticJsonDocument<500> doc;
   DeserializationError error = deserializeJson(doc, line);
   if (error) {
@@ -596,11 +609,12 @@ void getInvoice() {
   WiFiClientSecure client;
   client.setInsecure();
   const char* lnbitsserver = lnbitsServer.c_str();
+  long int lnbitsport = lnbitsPort.toInt();
   const char* invoicekey = invoiceKey.c_str();
   const char* lnbitsamount = amount.c_str();
   const char* lnbitsdescription = description.c_str();
 
-  if (!client.connect(lnbitsserver, 443)){
+  if (!client.connect(lnbitsserver, lnbitsport)){
     down = true;
     return;   
   }
@@ -646,8 +660,9 @@ void checkInvoice(){
   WiFiClientSecure client;
   client.setInsecure();
   const char* lnbitsserver = lnbitsServer.c_str();
+  long int lnbitsport = lnbitsPort.toInt();
   const char* invoicekey = invoiceKey.c_str();
-  if (!client.connect(lnbitsserver, 443)){
+  if (!client.connect(lnbitsserver, lnbitsport)){
     down = true;
     return;   
   }
