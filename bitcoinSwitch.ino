@@ -36,6 +36,7 @@ String serverFull;
 String lnbitsServer;
 String deviceId;
 String highPin;
+String timePin;
 String lnurl;
 String dataId;
 String payReq;
@@ -212,15 +213,15 @@ void setup()
     const JsonObject maRoot1 = doc[1];
     const char *maRoot1Char = maRoot1["value"];
     serverFull = maRoot1Char;
-    lnbitsServer = serverFull.substring(5, serverFull.length() - 38)
-    deviceId = server.substring(server.length() - 21)
+    lnbitsServer = serverFull.substring(5, serverFull.length() - 38);
+    deviceId = serverFull.substring(serverFull.length() - 21);
 
     const JsonObject maRoot2 = doc[2];
-    const char *maRoot2Char = maRoot4["value"];
+    const char *maRoot2Char = maRoot2["value"];
     highPin = maRoot2Char;
 
     const JsonObject maRoot3 = doc[3];
-    const char *maRoot3Char = maRoot4["value"];
+    const char *maRoot3Char = maRoot3["value"];
     lnurl = maRoot3Char;
   }
   else{
@@ -310,7 +311,7 @@ void setup()
   digitalWrite(highPin.toInt(), HIGH);
   delay(1000);
   digitalWrite(highPin.toInt(), LOW);
-  webSocket.beginSSL(server.substring(5, server.length() - 38), 443, server.substring(server.length() - 38));
+  webSocket.beginSSL(lnbitsServer, 443, "/lnurldevice/ws/" + deviceId);
   webSocket.onEvent(webSocketEvent);
 }
 
@@ -512,7 +513,6 @@ void checkConnection(){
   WiFiClientSecure client;
   client.setInsecure();
   const char* lnbitsserver = lnbitsServer.c_str();
-  const char* invoicekey = invoiceKey.c_str();
   if (!client.connect(lnbitsserver, 443)){
     down = true;
     serverError();
@@ -553,7 +553,8 @@ void getInvoice(){
     Serial.println(error.f_str());
     return;
   }
-  payReq = doc["pr"];
+  const char* temp = doc["pr"];
+  payReq = temp;
 }
 
 
@@ -568,14 +569,15 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         case WStype_CONNECTED:
             {
                 Serial.printf("[WSc] Connected to url: %s\n",  payload);
-                paid = true;
+                
 
 			    // send message to server when Connected
 				webSocket.sendTXT("Connected");
             }
             break;
         case WStype_TEXT:
-            Serial.printf(payload);
+            timePin = (char*)payload;
+            paid = true;
             
 		case WStype_ERROR:			
 		case WStype_FRAGMENT_TEXT_START:
