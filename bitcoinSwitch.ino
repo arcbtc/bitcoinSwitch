@@ -90,7 +90,7 @@ static const char PAGE_ELEMENTS[] PROGMEM = R"(
      {
       "name": "lnurl",
       "type": "ACInput",
-      "label": "Pin to turn on",
+      "label": "Using LNURL",
       "value": "true"
     },
     {
@@ -214,7 +214,7 @@ void setup()
     const char *maRoot1Char = maRoot1["value"];
     serverFull = maRoot1Char;
     lnbitsServer = serverFull.substring(5, serverFull.length() - 38);
-    deviceId = serverFull.substring(serverFull.length() - 21);
+    deviceId = serverFull.substring(serverFull.length() - 22);
 
     const JsonObject maRoot2 = doc[2];
     const char *maRoot2Char = maRoot2["value"];
@@ -238,7 +238,7 @@ void setup()
       File param = FlashFS.open(PARAM_FILE, "r");
       if (param)
       {
-        aux.loadElement(param, {"password", "server", "pin"});
+        aux.loadElement(param, {"password", "server", "pin", "lnurl"});
         param.close();
       }
 
@@ -260,7 +260,7 @@ void setup()
       if (param)
       {
         // save as a loadable set for parameters.
-        elementsAux.saveElement(param, {"password", "server", "pin"});
+        elementsAux.saveElement(param, {"password", "server", "pin", "lnurl"});
         param.close();
         // read the saved elements again to display.
         param = FlashFS.open(PARAM_FILE, "r");
@@ -364,7 +364,7 @@ void loop() {
         }
         digitalWrite(highPin.toInt(), HIGH);
         delay(timePin.toInt());
-        digitalWrite(highPin.toInt(), LOW); 
+        digitalWrite(highPin.toInt(), LOW);
       }
     }
     payReq = "";
@@ -528,26 +528,67 @@ void getInvoice(){
     down = true;
     return;   
   }
-
-  String url = "/lnurldevice/api/v1/lnurl/cb/";
+  StaticJsonDocument<500> doc;
+  DeserializationError error;
+  char c;
+  String line;
+  String url = "/lnurldevice/api/v1/lnurl/";
   client.print(String("GET ") + url + deviceId +" HTTP/1.1\r\n" +
+                "Host: " + lnbitsserver + "\r\n" +
+                "User-Agent: ESP32\r\n" +
+                "Content-Type: application/json\r\n" +
+                "Connection: close\r\n\r\n");
+  while (client.connected()) {
+    line = client.readStringUntil('\n');
+    if (line == "\r") {
+      break;
+    }
+  }
+  String callback;
+  while (client.available()) {
+    line = client.readStringUntil('\n');
+    callback = line;
+  }
+  Serial.println(callback);
+  delay(500);
+  error = deserializeJson(doc, callback);
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.f_str());
+    return;
+  }
+  const char* callbackChar = doc["callback"];
+  String callbackStr = callbackChar;
+  getCallback(callbackStr);
+}
+
+void getCallback(String callbackStr){
+  WiFiClientSecure client;
+  client.setInsecure();
+  const char* lnbitsserver = lnbitsServer.c_str();
+  if (!client.connect(lnbitsserver, 443)){
+    down = true;
+    return;   
+  }
+  StaticJsonDocument<500> doc;
+  DeserializationError error;
+  char c;
+  String line;
+  client.print(String("GET ") + callbackStr.substring(8 + lnbitsServer.length()) +" HTTP/1.1\r\n" +
                 "Host: " + lnbitsserver + "\r\n" +
                 "User-Agent: ESP32\r\n" +
                 "Content-Type: application/json\r\n" +
                 "Connection: close\r\n\r\n");
    while (client.connected()) {
    String line = client.readStringUntil('\n');
-    if (line == "\r") {
-      break;
-    }
+   Serial.println(line);
     if (line == "\r") {
       break;
     }
   }
-  String line = client.readString();
+  line = client.readString();
   Serial.println(line);
-  StaticJsonDocument<200> doc;
-  DeserializationError error = deserializeJson(doc, line);
+  error = deserializeJson(doc, line);
   if (error) {
     Serial.print(F("deserializeJson() failed: "));
     Serial.println(error.f_str());
@@ -556,8 +597,6 @@ void getInvoice(){
   const char* temp = doc["pr"];
   payReq = temp;
 }
-
-
 //////////////////WEBSOCKET///////////////////
 
 
