@@ -310,6 +310,8 @@ void setup()
   digitalWrite(highPin.toInt(), HIGH);
   delay(1000);
   digitalWrite(highPin.toInt(), LOW);
+  webSocket.beginSSL(server.substring(5, server.length() - 38), 443, server.substring(server.length() - 38));
+  webSocket.onEvent(webSocketEvent);
 }
 
 void loop() {
