@@ -14,13 +14,15 @@ fs::SPIFFSFS &FlashFS = SPIFFS;
 #include <AutoConnect.h>
 #include <ArduinoJson.h>
 
+#include <WebSocketsClient.h>
+
 #define PARAM_FILE "/elements.json"
 
 /////////////////////////////////
 ///////////CHANGE////////////////
 /////////////////////////////////
 
-bool usingM5 = true; // false if not using M5Stack          
+bool usingM5 = false; // false if not using M5Stack          
 bool format = false; // true for formatting SPIFFS, use once, then make false and reflash
 int portalPin = 4;
 
@@ -30,14 +32,12 @@ int portalPin = 4;
 
 // Access point variables
 String password;
+String serverFull;
 String lnbitsServer;
-String lnurlP;
-String invoiceKey;
+String deviceId;
 String highPin;
-String timePin;
-String amount;
+String lnurl;
 String dataId;
-String description;
 String payReq;
 
 int balance;
@@ -77,19 +77,7 @@ static const char PAGE_ELEMENTS[] PROGMEM = R"(
     {
       "name": "server",
       "type": "ACInput",
-      "label": "LNbits server",
-      "value": "legend.lnbits.com"
-    },
-    {
-      "name": "lnurl",
-      "type": "ACInput",
-      "label": "LNURLPay optional for static QR",
-      "value": ""
-    },
-    {
-      "name": "invoicekey",
-      "type": "ACInput",
-      "label": "LNbits invoice key",
+      "label": "LNbits LNURLDevice ws link",
       "value": ""
     },
     {
@@ -98,17 +86,11 @@ static const char PAGE_ELEMENTS[] PROGMEM = R"(
       "label": "Pin to turn on",
       "value": ""
     },
-    {
-      "name": "time",
+     {
+      "name": "lnurl",
       "type": "ACInput",
-      "label": "Time to turn on pin",
-      "value": ""
-    },
-    {
-      "name": "amount",
-      "type": "ACInput",
-      "label": "Amount to check for",
-      "value": ""
+      "label": "Pin to turn on",
+      "value": "true"
     },
     {
       "name": "load",
@@ -164,6 +146,7 @@ static const char PAGE_SAVE[] PROGMEM = R"(
 )";
 
 TFT_eSPI tft = TFT_eSPI();
+WebSocketsClient webSocket;
 
 WebServerClass server;
 AutoConnect portal(server);
@@ -228,28 +211,17 @@ void setup()
     
     const JsonObject maRoot1 = doc[1];
     const char *maRoot1Char = maRoot1["value"];
-    lnbitsServer = maRoot1Char;
+    serverFull = maRoot1Char;
+    lnbitsServer = serverFull.substring(5, serverFull.length() - 38)
+    deviceId = server.substring(server.length() - 21)
 
     const JsonObject maRoot2 = doc[2];
-    const char *maRoot2Char = maRoot2["value"];
-    lnurlP = maRoot2Char;
-    lnurlP.toUpperCase();
+    const char *maRoot2Char = maRoot4["value"];
+    highPin = maRoot2Char;
 
     const JsonObject maRoot3 = doc[3];
-    const char *maRoot3Char = maRoot3["value"];
-    invoiceKey = maRoot3Char;
-
-    const JsonObject maRoot4 = doc[4];
-    const char *maRoot4Char = maRoot4["value"];
-    highPin = maRoot4Char;
-    
-    const JsonObject maRoot5 = doc[5];
-    const char *maRoot5Char = maRoot5["value"];
-    timePin = maRoot5Char;
-
-    const JsonObject maRoot6 = doc[6];
-    const char *maRoot6Char = maRoot6["value"];
-    amount = maRoot6Char;
+    const char *maRoot3Char = maRoot4["value"];
+    lnurl = maRoot3Char;
   }
   else{
     triggerAp = true;
@@ -265,7 +237,7 @@ void setup()
       File param = FlashFS.open(PARAM_FILE, "r");
       if (param)
       {
-        aux.loadElement(param, {"password", "server", "lnurl", "invoicekey", "pin", "time", "amount"});
+        aux.loadElement(param, {"password", "server", "pin"});
         param.close();
       }
 
@@ -274,7 +246,7 @@ void setup()
         File param = FlashFS.open(PARAM_FILE, "r");
         if (param)
         {
-          aux.loadElement(param, {"password", "server", "lnurl", "invoicekey", "pin", "time", "amount"});
+          aux.loadElement(param, {"password", "server", "pin"});
           param.close();
         }
       }
@@ -287,7 +259,7 @@ void setup()
       if (param)
       {
         // save as a loadable set for parameters.
-        elementsAux.saveElement(param, {"password", "server", "lnurl", "invoicekey", "pin", "time", "amount"});
+        elementsAux.saveElement(param, {"password", "server", "pin"});
         param.close();
         // read the saved elements again to display.
         param = FlashFS.open(PARAM_FILE, "r");
@@ -324,7 +296,7 @@ void setup()
     }
     timer = timer + 200;
     delay(200);
-  if (invoiceKey != "")
+  if (lnbitsServer != "")
   {
     portal.join({elementsAux, saveAux});
     config.autoRise = false;
@@ -349,19 +321,15 @@ void loop() {
     delay(500);
   }
   Serial.println(highPin.toInt());
-  Serial.println(timePin.toInt());
-  Serial.println(lnurlP.substring(0, 5));
-  if(lnurlP.substring(0, 5) == "LNURL"){
+
+  if(lnurl == "true"){
     if(usingM5 == true){
       qrdisplayScreen();
     }
-    checkBalance();
-    oldBalance = balance;
-    while((oldBalance + amount.toInt()) > balance){
-      checkBalance();
-      delay(2000);
+    paid = false;
+    while(paid == false){
+      webSocket.loop();
     }
-    oldBalance = balance;
     Serial.println("Paid");
     if(usingM5 == true){
       paidScreen();
@@ -370,7 +338,6 @@ void loop() {
     delay(timePin.toInt());
     digitalWrite(highPin.toInt(), LOW); 
     delay(2000);
-    paid = false;
   }
   else{
     getInvoice();
@@ -386,7 +353,7 @@ void loop() {
       delay(5000);
     }
     while(paid == false && payReq != ""){
-      checkInvoice();
+      webSocket.loop();
       if(paid){
         Serial.println("Paid");
         if(usingM5 == true){
@@ -396,7 +363,6 @@ void loop() {
         delay(timePin.toInt());
         digitalWrite(highPin.toInt(), LOW); 
       }
-      delay(2000);
     }
     payReq = "";
     dataId = "";
@@ -509,8 +475,8 @@ void errorScreen()
 void qrdisplayScreen()
 {
   String qrCodeData;
-  if(lnurlP.substring(0, 5) == "LNURL"){
-    qrCodeData = lnurlP;
+  if(lnurl == "true"){
+    qrCodeData = lnurl;
   }
   else{
     qrCodeData = payReq;
@@ -552,108 +518,17 @@ void checkConnection(){
   }
 }
 
-void checkBalance(){
+void getInvoice(){
   WiFiClientSecure client;
   client.setInsecure();
   const char* lnbitsserver = lnbitsServer.c_str();
-  const char* invoicekey = invoiceKey.c_str();
   if (!client.connect(lnbitsserver, 443)){
     down = true;
     return;   
   }
 
-  String url = "/api/v1/wallet";
-  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-                "Host: " + lnbitsserver + "\r\n" +
-                "X-Api-Key: "+ invoicekey +" \r\n" +
-                "User-Agent: ESP32\r\n" +
-                "Content-Type: application/json\r\n" +
-                "Connection: close\r\n\r\n");
-   while (client.connected()) {
-   String line = client.readStringUntil('\n');
-    if (line == "\r") {
-      break;
-    }
-    if (line == "\r") {
-      break;
-    }
-  }
-  String line = client.readString();
-  Serial.println(line);
-  StaticJsonDocument<500> doc;
-  DeserializationError error = deserializeJson(doc, line);
-  if (error) {
-    Serial.print(F("deserializeJson() failed: "));
-    Serial.println(error.f_str());
-    return;
-  }
-  int charBalance = doc["balance"];
-  balance = charBalance;
-}
-
-
-void getInvoice() {
-  WiFiClientSecure client;
-  client.setInsecure();
-  const char* lnbitsserver = lnbitsServer.c_str();
-  const char* invoicekey = invoiceKey.c_str();
-  const char* lnbitsamount = amount.c_str();
-  const char* lnbitsdescription = description.c_str();
-
-  if (!client.connect(lnbitsserver, 443)){
-    down = true;
-    return;   
-  }
-
-  String topost = "{\"out\": false,\"amount\" : " + String(lnbitsamount) + ", \"memo\" :\""+ String(lnbitsdescription) + String(random(1,1000)) + "\"}";
-  String url = "/api/v1/payments";
-  client.print(String("POST ") + url +" HTTP/1.1\r\n" +
-                "Host: " + lnbitsserver + "\r\n" +
-                "User-Agent: ESP32\r\n" +
-                "X-Api-Key: "+ invoicekey +" \r\n" +
-                "Content-Type: application/json\r\n" +
-                "Connection: close\r\n" +
-                "Content-Length: " + topost.length() + "\r\n" +
-                "\r\n" + 
-                topost + "\n");
-  while (client.connected()) {
-    String line = client.readStringUntil('\n');
-    if (line == "\r") {
-      break;
-    }
-    if (line == "\r") {
-      break;
-    }
-  }
-  
-  String line = client.readString();
-
-  StaticJsonDocument<1000> doc;
-  DeserializationError error = deserializeJson(doc, line);
-  if (error) {
-    Serial.print(F("deserializeJson() failed: "));
-    Serial.println(error.f_str());
-    return;
-  }
-  const char* payment_hash = doc["checking_id"];
-  const char* payment_request = doc["payment_request"];
-  payReq = payment_request;
-  dataId = payment_hash;
-}
-
-
-void checkInvoice(){
-  WiFiClientSecure client;
-  client.setInsecure();
-  const char* lnbitsserver = lnbitsServer.c_str();
-  const char* invoicekey = invoiceKey.c_str();
-  if (!client.connect(lnbitsserver, 443)){
-    down = true;
-    return;   
-  }
-
-  String url = "/api/v1/payments/";
-  client.print(String("GET ") + url + dataId +" HTTP/1.1\r\n" +
+  String url = "/lnurldevice/api/v1/lnurl/cb/";
+  client.print(String("GET ") + url + deviceId +" HTTP/1.1\r\n" +
                 "Host: " + lnbitsserver + "\r\n" +
                 "User-Agent: ESP32\r\n" +
                 "Content-Type: application/json\r\n" +
@@ -676,6 +551,36 @@ void checkInvoice(){
     Serial.println(error.f_str());
     return;
   }
-  bool charPaid = doc["paid"];
-  paid = charPaid;
+  payReq = doc["pr"];
+}
+
+
+//////////////////WEBSOCKET///////////////////
+
+
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+    switch(type) {
+        case WStype_DISCONNECTED:
+            Serial.printf("[WSc] Disconnected!\n");
+            break;
+        case WStype_CONNECTED:
+            {
+                Serial.printf("[WSc] Connected to url: %s\n",  payload);
+                paid = true;
+
+			    // send message to server when Connected
+				webSocket.sendTXT("Connected");
+            }
+            break;
+        case WStype_TEXT:
+            Serial.printf(payload);
+            
+		case WStype_ERROR:			
+		case WStype_FRAGMENT_TEXT_START:
+		case WStype_FRAGMENT_BIN_START:
+		case WStype_FRAGMENT:
+		case WStype_FRAGMENT_FIN:
+			break;
+    }
+
 }
