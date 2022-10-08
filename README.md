@@ -1,4 +1,4 @@
-## Moved to <a href="https://github.com/lnbits/bitcoinSwitch">https://github.com/lnbits/bitcoinSwitch</a>
+# Moved to <a href="https://github.com/lnbits/bitcoinSwitch">https://github.com/lnbits/bitcoinSwitch</a>
 
 <img style="max-width:100%;" src="https://user-images.githubusercontent.com/33088785/166832680-600ed270-cbc9-4749-82f1-c1853b242329.png">
 
